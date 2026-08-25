@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuckyRoller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);	    
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .roulette-wrapper {
+            position: relative;
+            width: 500px;
+            height: 200px;
+            margin: 0 auto 30px;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: #fff;
+        }
+
+        .roulette-strip {
+            display: flex;
+            height: 200px;
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+            will-change: transform;
+        }
+
+        .roulette-item {
+            width: 150px;
+            height: 200px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            border-right: 2px solid #ddd;
+            position: relative;
+        }
+
+        .roulette-item img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        .roulette-item .label {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .center-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #ff4757;
+            transform: translateX(-50%);
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(255,71,87,0.8);
+        }
+
+        .spin-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255,71,87,0.4);
+        }
+
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255,71,87,0.6);
+        }
+
+        .spin-btn:active {
+            transform: translateY(0);
+        }
+
+        .spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+       
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            text-align: center;
+            animation: slideIn 0.3s;
+        }
+
+        .modal-content img {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .close-modal:hover {
+            background: #5a67d8;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="roulette-wrapper">
+            <div class="roulette-strip" id="rouletteStrip"></div>
+            <div class="center-line"></div>
+        </div>
+        <button class="spin-btn" id="spinBtn">КРУТИТЬ</button>
+    </div>
+   
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="Выигрыш">
+            <h2 id="modalTitle"></h2>
+            <p id="modalText"></p>
+            <button class="close-modal" onclick="closeModal()">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        
+        const items = [
+            {
+                name: "AK-47 | Crane Flight",
+                image: "https://cdn.csgoskins.gg/public/uih/items/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9hazQ3X2FrNDdfY3JhbmVfZmxpZ2h0X2xpZ2h0LjM3YjY3NDcxNWM1YzY3N2JmMjc4MDRhZTQ2ZjRhMjc3ZmIyMDE2ZjcucG5n/auto/auto/85/notrim/af44af46db6765b31542dc65bddfff9f.png",
+                chance: 5,
+                description: "Мифическое оружие невероятной силы!"
+            },
+            {
+                name: "M4A1-S | Black Lotus",
+                image: "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9tNGExX3NpbGVuY2VyX200YTFzX2JsYWNrX2xvdHVzX2xpZ2h0LmU1ZmM3YzUwZWU4MTBlYmUxNDU0YmUzY2YxOWNjYzU4NjEzMjU3ODkucG5n/auto/auto/85/notrim/f787a6ea1cbdec0d04d59dc57a7ffb99.png",
+                chance: 15,
+                description: "Ну ты и пельмень."
+            },
+            {
+                name: "Desert Eagle | Firebreathing",
+                image: "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9kZWFnbGVfZGVhZ2xlX2ZpcmVicmVhdGhpbmdfbGlnaHQuNWY1MGZkODA3NGFjMjRhNjE3YmM4M2ZkOTRlMDQ0OGYyNWQ3NTBlMy5wbmc-/auto/auto/85/notrim/340813112e8ae42a6adf381094cd9ec5.png",
+                chance: 20,
+                description: "Пустынный орлик."
+            },
+            {
+                name: "USP-S | Spiral Glitch",
+                image: "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl91c3Bfc2lsZW5jZXJfdXNwc19zcGlyYWxfZ2xpdGNoX2lyaWRlc2NlbnRfbGlnaHQuNTUxZDk0MmYxOTRkNzE1NTIwY2Q4NDQ5MDY2NDNmYzczYThmNGY1Yy5wbmc-/auto/auto/85/notrim/6882e207955a12288ee136dc1dc00bed.png",
+                chance: 15,
+                description: "Прекрасный как и ты."
+            },
+            {
+                name: "PP-Bizon | Night Riot",
+                image: "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9iaXpvbl9jdV9iaXpvbl9yaW90X2xpZ2h0LjAyMDg2ZTU0N2VlZWYwM2QzYjA5M2UyMDEyNzFjNjg2MWRkOTNkODQucG5n/auto/auto/85/notrim/61da47203462f58d017e239f87565992.png",
+                chance: 25,
+                description: "Обычный бизон, такие и в поле есть."
+            },
+            {
+                name: "SSG 08 | Calligrafaux",
+                image: "https://cdn.csgoskins.gg/public/uih/products/aHR0cHM6Ly9jZG4uY3Nnb3NraW5zLmdnL3B1YmxpYy9pbWFnZXMvYnVja2V0cy9lY29uL2RlZmF1bHRfZ2VuZXJhdGVkL3dlYXBvbl9zc2cwOF9odF9yZWRfZWRnZXNfZmluZWxpbmVfbGlnaHQuMGJiOTYyMWMxODAyNTAxMjViMGYyNGZmMmNiMzM4YzMwMDhlOTQwZC5wbmc-/auto/auto/85/notrim/b01133f238d0a0809882a65ad21f3d0c.png",
+                chance: 20,
+                description: "Увы, муха. Попробуйте ещё!"
+            }
+        ];
+
+        const rouletteStrip = document.getElementById('rouletteStrip');
+        const spinBtn = document.getElementById('spinBtn');
+        const modal = document.getElementById('modal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalText = document.getElementById('modalText');
+        
+        function createRoulette() {            
+            const repeatedItems = [...items, ...items, ...items, ...items, ...items];
+            repeatedItems.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'roulette-item';
+                itemElement.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}">
+                    <div class="label">${item.name}</div>
+                `;
+                rouletteStrip.appendChild(itemElement);
+            });
+        }
+        
+        function selectItemByChance() {
+            const totalChance = items.reduce((sum, item) => sum + item.chance, 0);
+            let random = Math.random() * totalChance;
+            
+            for (let item of items) {
+                random -= item.chance;
+                if (random <= 0) {
+                    return item;
+                }
+            }
+            
+            return items[items.length - 1];
+        }
+        
+        function spinRoulette() {
+            spinBtn.disabled = true;            
+           
+            const winningItem = selectItemByChance();
+            const winningIndex = items.indexOf(winningItem);            
+          
+            const itemsPerSet = items.length;
+            const targetSet = 2; 
+            const targetIndex = targetSet * itemsPerSet + winningIndex;            
+            
+            const itemWidth = 150; 
+            const containerWidth = 500; 
+            const targetPosition = targetIndex * itemWidth - (containerWidth / 2) + (itemWidth / 2);            
+            
+            const randomOffset = (Math.random() - 0.5) * itemWidth * 0.3;
+            const finalPosition = targetPosition + randomOffset;            
+           
+            rouletteStrip.style.transition = 'none';
+            rouletteStrip.style.transform = 'translateX(0)';            
+          
+            setTimeout(() => {
+                rouletteStrip.style.transition = 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                rouletteStrip.style.transform = `translateX(-${finalPosition}px)`;
+            }, 50);            
+           
+            setTimeout(() => {
+                showModal(winningItem);
+                spinBtn.disabled = false;
+            }, 4100);
+        }
+        
+        function showModal(item) {
+            modalImage.src = item.image;
+            modalTitle.textContent = item.name;
+            modalText.textContent = item.description;
+            modal.style.display = 'block';
+        }
+        
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+        
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+       
+        createRoulette();
+        spinBtn.addEventListener('click', spinRoulette);
+    </script>
+</body>
+</html>
